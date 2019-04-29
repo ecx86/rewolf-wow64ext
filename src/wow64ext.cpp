@@ -176,7 +176,7 @@ _ls_e:                                                  ;//
 }
 #pragma warning(pop)
 
-void getMem64(void* dstMem, DWORD64 srcMem, size_t sz)
+extern "C" void __declspec(dllexport) __cdecl getMem64(void* dstMem, DWORD64 srcMem, size_t sz)
 {
     if ((nullptr == dstMem) || (0 == srcMem) || (0 == sz))
         return;
@@ -196,6 +196,54 @@ void getMem64(void* dstMem, DWORD64 srcMem, size_t sz)
                                     ;//
         mov    edi, dstMem          ;// mov      edi, dword ptr [dstMem]        ; high part of RDI is zeroed
   REX_W mov    esi, _src.dw[0]      ;// mov      rsi, qword ptr [_src]
+        mov    ecx, sz              ;// mov      ecx, dword ptr [sz]            ; high part of RCX is zeroed
+                                    ;//
+        mov    eax, ecx             ;// mov      eax, ecx
+        and    eax, 3               ;// and      eax, 3
+        shr    ecx, 2               ;// shr      ecx, 2
+                                    ;//
+        rep    movsd                ;// rep movs dword ptr [rdi], dword ptr [rsi]
+                                    ;//
+        test   eax, eax             ;// test     eax, eax
+        je     _move_0              ;// je       _move_0
+        cmp    eax, 1               ;// cmp      eax, 1
+        je     _move_1              ;// je       _move_1
+                                    ;//
+        movsw                       ;// movs     word ptr [rdi], word ptr [rsi]
+        cmp    eax, 2               ;// cmp      eax, 2
+        je     _move_0              ;// je       _move_0
+                                    ;//
+_move_1:                            ;//
+        movsb                       ;// movs     byte ptr [rdi], byte ptr [rsi]
+                                    ;//
+_move_0:                            ;//
+        pop    esi                  ;// pop      rsi
+        pop    edi                  ;// pop      rdi
+
+        X64_End();
+    }
+}
+
+extern "C" void __declspec(dllexport) __cdecl setMem64(DWORD64 dstMem, void* srcMem, size_t sz)
+{
+	if ((nullptr == srcMem) || (0 == dstMem) || (0 == sz))
+		return;
+
+	reg64 _dst = { dstMem };
+
+    __asm
+    {
+        X64_Start();
+
+        ;// below code is compiled as x86 inline asm, but it is executed as x64 code
+        ;// that's why it need sometimes REX_W() macro, right column contains detailed
+        ;// transcription how it will be interpreted by CPU
+
+        push   edi                  ;// push     rdi
+        push   esi                  ;// push     rsi
+                                    ;//
+        mov    esi, srcMem          ;// mov      esi, dword ptr [srcMem]        ; high part of RSI is zeroed
+  REX_W mov    edi, _dst.dw[0]      ;// mov      rdi, qword ptr [_dst]
         mov    ecx, sz              ;// mov      ecx, dword ptr [sz]            ; high part of RCX is zeroed
                                     ;//
         mov    eax, ecx             ;// mov      eax, ecx

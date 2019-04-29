@@ -34,7 +34,7 @@ public:
     {
         if (*m_ptr && watchActive)
         { 
-            free(*m_ptr); 
+			free(*m_ptr);
             *m_ptr = 0; 
         } 
     }
